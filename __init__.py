@@ -259,7 +259,7 @@ async def group_process(bot, group_id: str):
     process_lock[group_id].release()
         
 start_time = f'2020-01-01 00:{random.randint(1,3):02d}:{random.randint(0,59):02d}'
-@sv.scheduled_job('interval',minutes=5, start_date=start_time)
+@sv.scheduled_job('interval',minutes=2.5, start_date=start_time)
 async def job():
     #改用interval+随机start_time方式,避开jitter的bug
     bot = hoshino.get_bot()

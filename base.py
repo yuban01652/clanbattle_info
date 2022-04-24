@@ -351,22 +351,26 @@ async def query_boss_data(group_id, boss = 0, page = 0):
     challenges = []
     boss_id = 0
     #在会战开始前可以能无法获取boss_list 这种情况直接返回空列表
-    try:
-        boss_id = clanbattle_info[group_id]['boss_list'][boss]['id']
-    except:
-        traceback.print_exc()
-        return 1, 'query_boss_data: 无法获取boss_id'
+    rod=int(len(clanbattle_info[group_id]['boss_list'])/5)
     page += 1 #api的page从1开始
+    for bossi in range(rod-1,-1,-1):
+        try:
+            boss_id = clanbattle_info[group_id]['boss_list'][bossi*5+boss]['id']
+            # print(boss_id)
+        except:
+            traceback.print_exc()
+            return 1, 'query_boss_data: 无法获取boss_id'
 
-    data = await query_data(group_id, "boss_report", boss_id, page)
-    if not data or len(data) == 0:
-        return 1, 'query_boss_data: api访问失败'
-    if not 'data' in data:
-        return 1, 'query_boss_data: api数据异常'
-    data = data['data']
-    for item in data:
-        item['boss'] = boss #源数据没有boss序号 额外加入
-        challenges.append(item)
+        data = await query_data(group_id, "boss_report", boss_id, page)
+        # print(data)
+        if not data or len(data) == 0:
+            return 1, 'query_boss_data: api访问失败'
+        if not 'data' in data:
+            return 1, 'query_boss_data: api数据异常'
+        data = data['data']
+        for item in data:
+            item['boss'] = boss #源数据没有boss序号 额外加入
+            challenges.append(item)
     return 0, challenges
 
 #预初始化群组数据
@@ -538,6 +542,7 @@ def check_reservation(group_id: str):
         clanbattle_info[group_id]['boss_info']
         #boss列表 [{id: "501", boss_name: "双足飞龙"}, {id: "502", boss_name: "野性狮鹫"}, {id: "503", boss_name: "雷电"},…]
         clanbattle_info[group_id]['boss_list'] 
+        # print(clanbattle_info[group_id]['boss_list'])
         boss = -1
         for i in range(len(clanbattle_info[group_id]['boss_list'])):
             if clanbattle_info[group_id]['boss_list'][i]['boss_name'] == clanbattle_info[group_id]['boss_info']['name']:
