@@ -97,27 +97,29 @@ async def update_challenge_list(group_id: str) -> int:
         if len(boss_challenge_list[group_id][boss]) != 0:
             last_challenge = boss_challenge_list[group_id][boss][-1]
         challenges = []
-        page = 0
         index = -1
         start = 0
-        while True:
-            #寻找该boss本地最后一条出刀数据在新获取数据中的位置(index)
-            #当前循环没有找到就继续循环拉取下一页,直到找到或者读取完全部记录.
-            #没有新出刀记录index = 0, 本地记录为空index=-1
-            #这个动作不能在整5分进行,否则bigfun数据刷新会导致出刀数据不连续.
-            ret, temp_challenges = await query_boss_data(group_id, boss, page)
-            if ret != 0:
-                group_config[group_id]['info'] = temp_challenges
-                return 1
-            challenges += temp_challenges
-            for i in range(start, len(challenges)):
-                if challenges[i] == last_challenge:
-                    index = i
+        rod=int(len(clanbattle_info[group_id]['boss_list'])/5)
+        for bossi in range(rod-1,-1,-1):
+            page = 0
+            while True:
+                #寻找该boss本地最后一条出刀数据在新获取数据中的位置(index)
+                #当前循环没有找到就继续循环拉取下一页,直到找到或者读取完全部记录.
+                #没有新出刀记录index = 0, 本地记录为空index=-1
+                #这个动作不能在整5分进行,否则bigfun数据刷新会导致出刀数据不连续.
+                ret, temp_challenges = await query_boss_data(group_id, bossi*5+boss, page)
+                if ret != 0:
+                    group_config[group_id]['info'] = temp_challenges
+                    return 1
+                challenges += temp_challenges
+                for i in range(start, len(challenges)):
+                    if challenges[i] == last_challenge:
+                        index = i
+                        break
+                page += 1
+                start += len(challenges)
+                if index != -1 or len(temp_challenges) == 0 or len(temp_challenges) % 25 != 0:
                     break
-            page += 1
-            start += len(challenges)
-            if index != -1 or len(temp_challenges) == 0 or len(temp_challenges) % 25 != 0:
-                break
         if index == -1: #没有找到匹配项 重置该boss出刀表
             index = len(challenges)
             boss_challenge_list[group_id][boss] = []
@@ -351,26 +353,25 @@ async def query_boss_data(group_id, boss = 0, page = 0):
     challenges = []
     boss_id = 0
     #在会战开始前可以能无法获取boss_list 这种情况直接返回空列表
-    rod=int(len(clanbattle_info[group_id]['boss_list'])/5)
     page += 1 #api的page从1开始
-    for bossi in range(rod-1,-1,-1):
-        try:
-            boss_id = clanbattle_info[group_id]['boss_list'][bossi*5+boss]['id']
-            # print(boss_id)
-        except:
-            traceback.print_exc()
-            return 1, 'query_boss_data: 无法获取boss_id'
+    try:
+        boss_id = clanbattle_info[group_id]['boss_list'][boss]['id']
+        # print(boss_id)
+    except:
+        traceback.print_exc()
+        return 1, 'query_boss_data: 无法获取boss_id'
 
-        data = await query_data(group_id, "boss_report", boss_id, page)
-        # print(data)
-        if not data or len(data) == 0:
-            return 1, 'query_boss_data: api访问失败'
-        if not 'data' in data:
-            return 1, 'query_boss_data: api数据异常'
-        data = data['data']
-        for item in data:
-            item['boss'] = boss #源数据没有boss序号 额外加入
-            challenges.append(item)
+    data = await query_data(group_id, "boss_report", boss_id, page)
+    # print(data)
+    if not data or len(data) == 0:
+        return 1, 'query_boss_data: api访问失败'
+    if not 'data' in data:
+        return 1, 'query_boss_data: api数据异常'
+    data = data['data']
+    for item in data:
+        item['boss'] = boss % 5 #源数据没有boss序号 额外加入
+        challenges.append(item)
+    # print(challenges)
     return 0, challenges
 
 #预初始化群组数据
